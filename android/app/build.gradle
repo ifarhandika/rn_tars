@@ -111,6 +111,9 @@ dependencies {
     // The version of react-native is set by the React Native Gradle Plugin
     implementation("com.facebook.react:react-android")
 
+    // Add Chainway RFID SDK
+    implementation(files("../../API_Ver20250209/DeviceAPI_ver20250209_release.aar"))
+
     if (hermesEnabled.toBoolean()) {
         implementation("com.facebook.react:hermes-android")
     } else {

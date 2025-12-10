@@ -1,0 +1,1 @@
+package com.yourapp.rfid; public class ChainwayRfidPackage {}
