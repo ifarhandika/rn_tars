@@ -19,6 +19,27 @@ export default function RFIDExample() {
   const [isInitialized, setIsInitialized] = useState(false);
   const [readMode, setReadMode] = useState<'EPC' | 'EPC+TID'>('EPC+TID');
 
+  const startReading = async () => {
+    try {
+      setTags(new Map()); // Clear previous tags
+      await ChainwayRFID.startInventory();
+      setIsReading(true);
+    } catch (error: any) {
+      console.error('Start reading error:', error);
+      Alert.alert('Error', `Failed to start reading: ${error.message}`);
+    }
+  };
+
+  const stopReading = async () => {
+    try {
+      await ChainwayRFID.stopInventory();
+      setIsReading(false);
+    } catch (error: any) {
+      console.error('Stop reading error:', error);
+      Alert.alert('Error', `Failed to stop reading: ${error.message}`);
+    }
+  };
+
   useEffect(() => {
     initializeRFID();
 
@@ -26,6 +47,10 @@ export default function RFIDExample() {
     const tagSubscription = ChainwayRFID.addTagReadListener(tag => {
       setTags(prevTags => {
         const newTags = new Map(prevTags);
+        if (prevTags.has(tag.epc)) {
+          const existingTag = prevTags.get(tag.epc)!;
+          tag.count = String(parseInt(existingTag.count || '1') + 1);
+        }
         newTags.set(tag.epc, tag);
         return newTags;
       });
@@ -33,19 +58,40 @@ export default function RFIDExample() {
 
     const startSubscription = ChainwayRFID.addInventoryStartListener(() => {
       console.log('Inventory started');
+      setIsReading(true);
     });
 
     const stopSubscription = ChainwayRFID.addInventoryStopListener(() => {
       console.log('Inventory stopped');
+      setIsReading(false);
+    });
+
+    // Add hardware trigger button listeners
+    const triggerPressSubscription = ChainwayRFID.addTriggerPressListener(() => {
+      console.log('Trigger pressed');
+      ChainwayRFID.isInventorying().then(inventorying => {
+        if (!inventorying) {
+          startReading();
+        }
+      }).catch(console.error);
+    });
+
+    const triggerReleaseSubscription = ChainwayRFID.addTriggerReleaseListener(() => {
+      console.log('Trigger released');
+      ChainwayRFID.isInventorying().then(inventorying => {
+        if (inventorying) {
+          stopReading();
+        }
+      }).catch(console.error);
     });
 
     return () => {
-      // Clean up
+      // Clean up - only remove listeners, don't stop inventory or free reader
       tagSubscription.remove();
       startSubscription.remove();
       stopSubscription.remove();
-      ChainwayRFID.stopInventory().catch(console.error);
-      ChainwayRFID.free().catch(console.error);
+      triggerPressSubscription.remove();
+      triggerReleaseSubscription.remove();
     };
   }, []);
 
@@ -76,25 +122,6 @@ export default function RFIDExample() {
     } catch (error: any) {
       console.error('Failed to initialize RFID:', error);
       Alert.alert('Error', `Initialization failed: ${error.message}`);
-    }
-  };
-
-  const startReading = async () => {
-    try {
-      setTags(new Map()); // Clear previous tags
-      await ChainwayRFID.startInventory();
-      setIsReading(true);
-    } catch (error: any) {
-      Alert.alert('Error', `Failed to start reading: ${error.message}`);
-    }
-  };
-
-  const stopReading = async () => {
-    try {
-      await ChainwayRFID.stopInventory();
-      setIsReading(false);
-    } catch (error: any) {
-      Alert.alert('Error', `Failed to stop reading: ${error.message}`);
     }
   };
 
@@ -161,6 +188,7 @@ export default function RFIDExample() {
           {isInitialized ? `Version: ${version}` : 'Not Initialized'}
         </Text>
         <Text style={styles.power}>Power: {power} dBm</Text>
+        <Text style={styles.triggerHint}>📱 Press C5 trigger button to scan</Text>
       </View>
 
       <View style={styles.controls}>
@@ -284,6 +312,13 @@ const styles = StyleSheet.create({
     color: 'white',
     opacity: 0.9,
     marginTop: 2,
+  },
+  triggerHint: {
+    fontSize: 14,
+    color: 'white',
+    opacity: 0.95,
+    marginTop: 8,
+    fontWeight: '600',
   },
   controls: {
     backgroundColor: 'white',

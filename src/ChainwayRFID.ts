@@ -1,4 +1,8 @@
-import { NativeModules, NativeEventEmitter, EmitterSubscription } from 'react-native';
+import {
+  NativeModules,
+  NativeEventEmitter,
+  EmitterSubscription,
+} from 'react-native';
 
 interface ChainwayRfidInterface {
   // Constants
@@ -6,18 +10,18 @@ interface ChainwayRfidInterface {
   BANK_EPC: number;
   BANK_TID: number;
   BANK_USER: number;
-  
+
   FREQ_CHINA_840: number;
   FREQ_CHINA_920: number;
   FREQ_EUROPE: number;
   FREQ_USA: number;
   FREQ_KOREA: number;
   FREQ_JAPAN: number;
-  
+
   EVENT_TAG_READ: string;
   EVENT_INVENTORY_START: string;
   EVENT_INVENTORY_STOP: string;
-  
+
   // Methods
   init(): Promise<boolean>;
   free(): Promise<boolean>;
@@ -29,10 +33,26 @@ interface ChainwayRfidInterface {
   startInventory(): Promise<boolean>;
   stopInventory(): Promise<boolean>;
   inventorySingleTag(): Promise<TagInfo>;
-  readData(accessPwd: string, bank: number, ptr: number, cnt: number): Promise<string>;
-  writeData(accessPwd: string, bank: number, ptr: number, cnt: number, data: string): Promise<boolean>;
+  readData(
+    accessPwd: string,
+    bank: number,
+    ptr: number,
+    cnt: number,
+  ): Promise<string>;
+  writeData(
+    accessPwd: string,
+    bank: number,
+    ptr: number,
+    cnt: number,
+    data: string,
+  ): Promise<boolean>;
   writeEPC(accessPwd: string, epcData: string): Promise<boolean>;
-  setFilter(bank: number, ptr: number, cnt: number, data: string): Promise<boolean>;
+  setFilter(
+    bank: number,
+    ptr: number,
+    cnt: number,
+    data: string,
+  ): Promise<boolean>;
   lockTag(accessPwd: string, lockCode: string): Promise<boolean>;
   killTag(killPwd: string): Promise<boolean>;
   isInventorying(): Promise<boolean>;
@@ -62,30 +82,30 @@ const eventEmitter = new NativeEventEmitter(ChainwayRfid);
 
 /**
  * Chainway C5 RFID Reader Module
- * 
+ *
  * This module provides access to the Chainway C5 UHF RFID reader functionality.
- * 
+ *
  * @example
  * ```typescript
  * import ChainwayRFID from './ChainwayRFID';
- * 
+ *
  * // Initialize the reader
  * const initialized = await ChainwayRFID.init();
- * 
+ *
  * // Set power level (0-30)
  * await ChainwayRFID.setPower(26);
- * 
+ *
  * // Listen for tags
  * ChainwayRFID.addTagReadListener((tag) => {
  *   console.log('Tag read:', tag.epc, 'RSSI:', tag.rssi);
  * });
- * 
+ *
  * // Start reading tags
  * await ChainwayRFID.startInventory();
- * 
+ *
  * // Stop reading
  * await ChainwayRFID.stopInventory();
- * 
+ *
  * // Clean up
  * ChainwayRFID.removeAllListeners();
  * await ChainwayRFID.free();
@@ -209,7 +229,7 @@ class ChainwayRFID {
     accessPwd: string,
     bank: number,
     ptr: number,
-    cnt: number
+    cnt: number,
   ): Promise<string> {
     return RfidModule.readData(accessPwd, bank, ptr, cnt);
   }
@@ -228,7 +248,7 @@ class ChainwayRFID {
     bank: number,
     ptr: number,
     cnt: number,
-    data: string
+    data: string,
   ): Promise<boolean> {
     return RfidModule.writeData(accessPwd, bank, ptr, cnt, data);
   }
@@ -256,7 +276,7 @@ class ChainwayRFID {
     bank: number,
     ptr: number,
     cnt: number,
-    data: string
+    data: string,
   ): Promise<boolean> {
     return RfidModule.setFilter(bank, ptr, cnt, data);
   }
@@ -321,7 +341,7 @@ class ChainwayRFID {
    * @returns Subscription object
    */
   static addInventoryStartListener(
-    callback: InventoryStatusCallback
+    callback: InventoryStatusCallback,
   ): EmitterSubscription {
     return eventEmitter.addListener(this.EVENT_INVENTORY_START, callback);
   }
@@ -332,9 +352,31 @@ class ChainwayRFID {
    * @returns Subscription object
    */
   static addInventoryStopListener(
-    callback: InventoryStatusCallback
+    callback: InventoryStatusCallback,
   ): EmitterSubscription {
     return eventEmitter.addListener(this.EVENT_INVENTORY_STOP, callback);
+  }
+
+  /**
+   * Add a listener for trigger button press events
+   * @param callback Function to call when trigger button is pressed
+   * @returns Subscription object
+   */
+  static addTriggerPressListener(
+    callback: InventoryStatusCallback,
+  ): EmitterSubscription {
+    return eventEmitter.addListener('onTriggerPress', callback);
+  }
+
+  /**
+   * Add a listener for trigger button release events
+   * @param callback Function to call when trigger button is released
+   * @returns Subscription object
+   */
+  static addTriggerReleaseListener(
+    callback: InventoryStatusCallback,
+  ): EmitterSubscription {
+    return eventEmitter.addListener('onTriggerRelease', callback);
   }
 
   /**
@@ -344,6 +386,8 @@ class ChainwayRFID {
     eventEmitter.removeAllListeners(this.EVENT_TAG_READ);
     eventEmitter.removeAllListeners(this.EVENT_INVENTORY_START);
     eventEmitter.removeAllListeners(this.EVENT_INVENTORY_STOP);
+    eventEmitter.removeAllListeners('onTriggerPress');
+    eventEmitter.removeAllListeners('onTriggerRelease');
   }
 }
 
